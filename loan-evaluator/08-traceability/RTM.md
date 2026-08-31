@@ -1,0 +1,49 @@
+# Requirements Traceability Matrix (RTM) — Loan Evaluator
+
+| Field | Value |
+|---|---|
+| Doc ID | RTM-LE-001 |
+| Version | 1.0 |
+| Purpose | Bidirectional coverage: every Business Requirement → Functional/Non-Functional Requirement → Test/Edge Case → Execution Status → Defect (if any). |
+| Machine-readable version | `rtm.csv` |
+
+**Status legend:** `Not Executed` · `Passed` · `Failed` · `Blocked`. This
+matrix ships as a template with all items `Not Executed` — populate the
+Status/Defect columns during `09-test-execution/Test-Execution-Summary-Report.md`.
+
+| BR ID | Business Requirement | FR/NFR ID(s) | Test Case ID(s) | Edge Case ID(s) | Status | Defect ID(s) |
+|---|---|---|---|---|---|---|
+| BR-01 | Calculate DTI | FR-101, FR-101a | TC-001–TC-007 | EC-007, EC-008, EC-009 | Not Executed | — |
+| BR-02 | Calculate LTV | FR-102 | TC-008–TC-013 | EC-007, EC-008 | Not Executed | — |
+| BR-03 | Credit score tiering | FR-103 | TC-014–TC-025 | EC-001 | Not Executed | — |
+| BR-04 | Employment stability | FR-104 | TC-026–TC-030 | EC-014, EC-015 | Not Executed | — |
+| BR-05 | Red flag detection | FR-105 | TC-006, TC-012, TC-022–TC-024, TC-029–TC-034 | EC-010, EC-011, EC-017, EC-020 | Not Executed | — |
+| BR-06 | Overall risk level | FR-106 | TC-034–TC-036, TC-043 | EC-010, EC-011 | Not Executed | — |
+| BR-07 | Recommendation output | FR-106 | TC-035, TC-036, TC-043 | EC-011 | Not Executed | — |
+| BR-08 | Conditions for approval | FR-107 | TC-036–TC-038 | — | Not Executed | — |
+| BR-09 | Rationale / adverse-action reasons | FR-108 | TC-039 | EC-026, EC-027 | Not Executed | — |
+| BR-10 | Full audit trail | FR-109 | TC-040 | EC-022 | Not Executed | — |
+| BR-11 | No automated final decline (human-in-the-loop) | FR-106 | TC-043 | EC-010, EC-011 | Not Executed | — |
+| BR-12 | Configurable thresholds, no redeploy | FR-110 | TC-041 | EC-012, EC-013 | Not Executed | — |
+| BR-13 | Exclude prohibited factors | FR-111 | TC-042 | EC-025 | Not Executed | — |
+| — | Cross-cutting: input validation / malformed data | FR-101–FR-103 (validation aspects) | TC-025 | EC-001–EC-006 | Not Executed | — |
+| — | Cross-cutting: co-borrower handling | FR-101a | TC-007 | EC-014–EC-016 | Not Executed | — |
+| — | Cross-cutting: performance | NFR-201, NFR-207 | TC-044 | — | Not Executed | — |
+| — | Cross-cutting: availability/resilience | NFR-202 | — | EC-022, EC-023 | Not Executed | — |
+| — | Cross-cutting: security & privacy | NFR-203, NFR-209 | TC-045 | EC-006 | Not Executed | — |
+| — | Cross-cutting: explainability | NFR-205 | TC-039 | EC-027 | Not Executed | — |
+| — | Cross-cutting: fairness / disparate impact | NFR-206 | TC-047 | EC-025 | Not Executed | — |
+| — | Cross-cutting: determinism / idempotency | NFR-211 | TC-046 | EC-021, EC-024 | Not Executed | — |
+| — | Cross-cutting: observability | NFR-212 | — | EC-019, EC-024 | Not Executed | — |
+| — | Cross-cutting: accessibility (officer UI) | NFR-210 | *(UI test cases — see note)* | — | Not Executed | — |
+
+**Coverage check:** every BR-xx (BR-01–BR-13) has at least one FR/NFR and
+at least one Test Case mapped — 100% requirement coverage achieved in this
+matrix. No orphan test cases (every TC-xxx above traces back to a BR
+through its FR/NFR) and no orphan requirements (every BR has ≥1 TC).
+
+**Note on accessibility:** NFR-210 test cases are intentionally not
+enumerated in `06-test-cases/Test-Cases.md` because the officer-facing UI
+is a separate, not-yet-built component in this release (see HLD-LE-001
+§4, out of scope). Add UI-specific test cases here once that UI is
+designed.

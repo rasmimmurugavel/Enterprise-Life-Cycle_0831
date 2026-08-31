@@ -1,0 +1,48 @@
+TC ID,Requirement(s),Title,Type,Priority,Test Data,Steps,Expected Result
+TC-001,FR-101,"DTI happy path, low",POS,P2,"income=120000/yr, debt=1500/mo, new pmt=1000/mo",Submit evaluation,"dti_ratio=25.0, DTI tier=Low"
+TC-002,FR-101,DTI boundary at 36.0,BND,P1,debt+new pmt = 36.0% of monthly income,Submit evaluation,"dti_ratio=36.0, tier=Low (inclusive)"
+TC-003,FR-101,DTI boundary at 36.1,BND,P1,"as above, 0.1 over",Submit evaluation,"dti_ratio=36.1, tier=Medium"
+TC-004,FR-101,DTI boundary at 43.0,BND,P1,debt ratio = 43.0%,Submit evaluation,tier=Medium (inclusive)
+TC-005,FR-101,DTI boundary at 43.1,BND,P1,debt ratio = 43.1%,Submit evaluation,"tier=High, no red flag yet"
+TC-006,"FR-101, FR-105 (RF-3)",DTI > 50% triggers red flag,RF,P1,debt ratio = 55.0%,Submit evaluation,"dti_ratio=55.0, red_flags includes RF-3, risk=High"
+TC-007,FR-101a,DTI combines co-borrower income/debt,POS,P2,primary + co_borrower incomes/debts,Submit evaluation,"DTI computed on combined figures, matches manual calc"
+TC-008,FR-102,LTV boundary at 80.0,BND,P1,"loan=240000, collateral=300000",Submit evaluation,"ltv_ratio=80.0, tier=Low"
+TC-009,"FR-102, FR-107",LTV boundary at 80.1 -> PMI condition,BND,P1,"loan=240300, collateral=300000",Submit evaluation,"tier=Medium; conditions includes PMI text"
+TC-010,FR-102,LTV boundary at 95.0,BND,P1,"loan=285000, collateral=300000",Submit evaluation,tier=Medium (inclusive)
+TC-011,FR-102,LTV boundary at 95.1,BND,P1,"loan=285300, collateral=300000",Submit evaluation,tier=High
+TC-012,"FR-102, FR-105 (RF-5)",LTV > 100% (underwater),RF,P1,"loan=310000, collateral=300000",Submit evaluation,"ltv_ratio=103.3, red_flags includes RF-5"
+TC-013,FR-102,LTV excluded for personal loans,POS,P2,"loan_type=personal, no collateral_value",Submit evaluation,"ltv_ratio=null, LTV excluded from aggregation"
+TC-014,FR-103,Credit score 750 -> Excellent,BND,P2,credit_score=750,Submit evaluation,credit_tier=Excellent
+TC-015,FR-103,Credit score 749 -> Good boundary,BND,P2,credit_score=749,Submit evaluation,credit_tier=Good
+TC-016,FR-103,Credit score 700 -> Good,BND,P2,credit_score=700,Submit evaluation,credit_tier=Good
+TC-017,FR-103,Credit score 699 -> Fair boundary,BND,P2,credit_score=699,Submit evaluation,credit_tier=Fair
+TC-018,FR-103,Credit score 650 -> Fair,BND,P2,credit_score=650,Submit evaluation,credit_tier=Fair
+TC-019,FR-103,Credit score 649 -> Poor boundary,BND,P2,credit_score=649,Submit evaluation,credit_tier=Poor
+TC-020,FR-103,Credit score 600 -> Poor,BND,P2,credit_score=600,Submit evaluation,credit_tier=Poor
+TC-021,FR-103,Credit score 599 -> Very Poor boundary,BND,P2,credit_score=599,Submit evaluation,credit_tier=Very Poor
+TC-022,FR-103,"Credit score 580 -> Very Poor, no red flag",BND,P1,credit_score=580,Submit evaluation,credit_tier=Very Poor; no RF-4 (inclusive boundary)
+TC-023,"FR-103, FR-105 (RF-4)",Credit score 579 -> red flag,BND,P1,credit_score=579,Submit evaluation,"red_flags includes RF-4, risk=High"
+TC-024,FR-103,No-score / thin file,RF,P1,credit_score=null,Submit evaluation,"credit_tier=No-Score, recommendation=Refer for Manual Underwriting"
+TC-025,FR-103,Out-of-range credit score rejected,NEG,P1,credit_score=900,Submit evaluation,"Request rejected with validation error, no evaluation produced"
+TC-026,FR-104,Stable employment,POS,P2,"employed, 5 yrs",Submit evaluation,"employment_assessment=Stable, no condition added"
+TC-027,"FR-104, FR-107",Limited employment history,POS,P2,"employed, 1 yr",Submit evaluation,"employment_assessment=Limited History; condition added"
+TC-028,FR-104,"Self-employed, verified, 3 yrs",POS,P2,"self_employed, income_verified=true, 3 yrs",Submit evaluation,employment_assessment=Stable
+TC-029,"FR-104, FR-105 (RF-7)","Self-employed, unverified income",RF,P1,"self_employed, income_verified=false",Submit evaluation,"red_flags includes RF-7, employment_assessment=Unverified"
+TC-030,"FR-104, FR-105 (RF-6)","Unemployed, no qualifying income",RF,P1,employment_status=unemployed,Submit evaluation,"red_flags includes RF-6, risk=High"
+TC-031,FR-105 (RF-1),Bankruptcy discharged 3 years ago,RF,P1,bankruptcy_discharge_date = today-3y,Submit evaluation,red_flags includes RF-1
+TC-032,FR-105 (RF-1),Bankruptcy discharged 8 years ago - outside window,NEG,P1,bankruptcy_discharge_date = today-8y,Submit evaluation,RF-1 not present
+TC-033,FR-105 (RF-2),Foreclosure 5 years ago,RF,P1,foreclosure_date = today-5y,Submit evaluation,red_flags includes RF-2
+TC-034,"FR-105, FR-106",Multiple simultaneous red flags,RF,P1,credit_score=560 (RF-4) + bankruptcy 2y ago (RF-1),Submit evaluation,"Both RF-1 and RF-4 listed; risk=High; recommendation no better than Refer"
+TC-035,FR-106,"All tiers Low, no red flags",POS,P1,"DTI=25%, LTV=70%, credit=780, employed 5y",Submit evaluation,"risk=Low, recommendation=Approve, conditions=[]"
+TC-036,"FR-106, FR-107",Mixed Medium tiers,POS,P1,"DTI=40%, LTV=85%, credit=720",Submit evaluation,"risk=Medium, recommendation=Approve with Conditions; conditions include PMI + income doc"
+TC-037,FR-107,PMI condition triggers at LTV 85%,POS,P2,LTV=85%,Submit evaluation,conditions contains PMI text
+TC-038,FR-107,Income-doc condition triggers at DTI 40%,POS,P2,DTI=40%,Submit evaluation,conditions contains additional-income-documentation text
+TC-039,FR-108,Rationale present whenever not full Approve,POS,P1,Any Medium/High scenario,Submit evaluation,"rationale[] non-empty, each entry has code + message"
+TC-040,FR-109,Audit record created for every evaluation,POS,P1,Any valid input,"Submit evaluation, then query audit store","Record exists with full input snapshot, computed values, ruleset_version, output, timestamp"
+TC-041,FR-110,Threshold change reflected without redeploy,POS,P1,Change DTI Medium cutoff via config service,Re-submit an application at the old boundary,"New threshold applied; ruleset_version in output matches the new config version"
+TC-042,FR-111,Prohibited factor field rejected,NEG,P1,Payload includes a race or marital_status field,Submit evaluation,"Request rejected at API boundary; no evaluation produced"
+TC-043,"BR-11, FR-106",System never outputs a final Decline,NEG,P1,Worst-case combination: all High tiers + every red flag,Submit evaluation,"recommendation in {Approve, Approve with Conditions, Refer for Manual Underwriting} - never Decline"
+TC-044,NFR-201,Performance under load,NFR,P2,"100 req/s sustained, 10 min",Run load test,"p95 latency < 2s, error rate ~0%"
+TC-045,NFR-203,SSN/NPI masked in logs,NFR,P1,Submit evaluation with SSN present,Inspect application logs,"SSN/account numbers masked, never appear in plaintext"
+TC-046,NFR-211,Deterministic/idempotent output,NFR,P1,"Same input + same ruleset_version, run 100x",Submit evaluation repeatedly,Identical output every time
+TC-047,NFR-206,Fairness / disparate-impact check,NFR,P1,Deidentified historical/synthetic dataset with protected-class proxies,Run statistical adverse-impact analysis,"Adverse-impact ratio within four-fifths guideline; results reviewed by Compliance"
