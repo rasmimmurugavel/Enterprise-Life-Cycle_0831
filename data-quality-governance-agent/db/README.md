@@ -55,7 +55,26 @@ broader privileges than intended.
 ## Local dev database
 
 For local development and running the eval fixtures without touching a
-real database, see `docker-compose.yml` at the repo root (added in a
-later build step) and `db/seed/`, which seeds a disposable Postgres
-instance with tables representing each defect class the rubric scores
-(nulls, duplicates, orphaned FKs, a PII-shaped column, stale data).
+real database, see `docker-compose.yml` at the repo root and
+`db/seed/`, which seeds a disposable Postgres instance with tables
+representing each defect class the rubric scores (nulls, duplicates,
+orphaned FKs, a PII-shaped column, stale data).
+
+## Eval seeding role vs. the audit role
+
+`eval/eval_runner.py` needs to `CREATE SCHEMA`/`CREATE TABLE` to load
+each fixture (`db/seed/*.sql`) - that is deliberately **not** a
+privilege the read-only `dq_audit_reader` role above has, and the eval
+runner never grants it one. Instead, point the eval runner at a
+separate, more-privileged connection via `DQ_EVAL_ADMIN_DATABASE_URL`
+(falls back to `DATABASE_URL` if unset); the agent itself, even during
+an eval run, still only ever queries through `dq_audit_reader`
+(`PGUSER`/`.env`). This mirrors a real environment: whoever loads
+fixtures/test data into a database is a different, more-privileged
+actor than the audit agent that later reads it.
+
+```bash
+export DQ_EVAL_ADMIN_DATABASE_URL="postgresql://postgres:changeme@localhost:5432/dq_eval"
+export DATABASE_URL="postgresql://dq_audit_reader:changeme@localhost:5432/dq_eval"
+python -m eval.eval_runner
+```

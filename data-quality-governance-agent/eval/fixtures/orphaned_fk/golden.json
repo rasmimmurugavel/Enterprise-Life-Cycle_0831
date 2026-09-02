@@ -1,0 +1,17 @@
+{
+  "fixture": "orphaned_fk",
+  "seed_file": "db/seed/orphaned_fk.sql",
+  "schema": "eval_orphaned_fk",
+  "description": "orders.customer_id has one orphaned reference (customer_id=99 does not exist), via a NOT VALID foreign key - the realistic case where a constraint was added without validating existing rows.",
+  "findings": [
+    {
+      "table": "orders",
+      "column": "customer_id",
+      "dimension": "consistency",
+      "min_severity": "high",
+      "evidence_expect": { "orphan_count": 1 }
+    }
+  ],
+  "pii_columns_detected": [],
+  "known_pii_values": []
+}

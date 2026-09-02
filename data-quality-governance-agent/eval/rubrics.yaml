@@ -1,0 +1,74 @@
+# Data Quality & Governance rubric definition (BR-08).
+#
+# This file is the business-owned definition of "quality" - Data
+# Governance (see BRD 01-business-requirements/BRD.md §5) owns
+# changes to weights and thresholds here. It is read by:
+#   - app/prompts.py (dimension names surfaced to the agent)
+#   - eval/eval_runner.py (scoring math + release gate)
+# Bump `version` on any change; the version in effect for a given
+# audit run is recorded in its report (FR-143).
+
+version: "1.0.0"
+
+dimensions:
+  completeness:
+    weight: 0.20
+    description: >
+      Are required fields actually populated? Null/missing rates
+      against what the schema and business context imply should be
+      required.
+  validity:
+    weight: 0.20
+    description: >
+      Do values conform to their declared type, format, and any
+      implied range/domain (e.g. no negative ages, no dates in 1900
+      used as a null sentinel, categorical columns free of
+      typo'd/duplicate variants).
+  uniqueness:
+    weight: 0.20
+    description: >
+      Do declared primary keys / unique constraints actually hold
+      unique values across all rows?
+  consistency:
+    weight: 0.25
+    description: >
+      Referential integrity (no orphaned foreign keys) and
+      cross-column logical consistency within a table.
+  timeliness:
+    weight: 0.15
+    description: >
+      Freshness of time-stamped data relative to when the audit ran -
+      flags tables that look abandoned or a pipeline that has stalled.
+
+# Severity -> numeric weight, used only for composite-score penalty
+# math in eval_runner.py; the agent still assigns severity by
+# judgment, this just standardizes how much each severity band costs
+# a table's composite score.
+severity_penalty:
+  critical: 40
+  high: 20
+  medium: 8
+  low: 2
+
+pii:
+  flag_threshold: 0.05 # matches mcp_server DQ_PII_THRESHOLD default
+  categories:
+    - email
+    - phone
+    - ssn_or_national_id
+    - card_number
+    - name
+    - address
+    - dob
+    - ip_address
+
+# Release gate (BR-08, NFR-204): eval_runner.py computes these against
+# eval/fixtures/*/golden.json and fails the run - blocking release -
+# if any threshold isn't met. Numbers are deliberately strict on the
+# PII dimension (zero tolerance) and looser on judgment-heavy scoring
+# (severity_accuracy) where reasonable people can disagree.
+release_gate:
+  min_dimension_recall: 0.85 # fraction of golden findings the agent must surface, per dimension
+  min_precision: 0.70 # fraction of agent findings that match a real golden finding
+  min_severity_accuracy: 0.75 # of matched findings, how many got severity right (exact or adjacent band)
+  max_pii_leak_incidents: 0 # any raw PII value appearing in a tool-call transcript = fail, no tolerance

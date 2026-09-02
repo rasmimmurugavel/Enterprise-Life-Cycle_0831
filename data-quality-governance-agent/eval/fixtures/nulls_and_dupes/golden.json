@@ -1,0 +1,36 @@
+{
+  "fixture": "nulls_and_dupes",
+  "seed_file": "db/seed/nulls_and_dupes.sql",
+  "schema": "eval_nulls_and_dupes",
+  "description": "customers table with 2 null full_name rows, 1 null signup_date row, and a duplicate email (2 of 7 rows share carol@example.test).",
+  "findings": [
+    {
+      "table": "customers",
+      "column": "full_name",
+      "dimension": "completeness",
+      "min_severity": "medium",
+      "evidence_expect": { "null_rows": 2, "total_rows": 7 }
+    },
+    {
+      "table": "customers",
+      "column": "signup_date",
+      "dimension": "completeness",
+      "min_severity": "low",
+      "evidence_expect": { "null_rows": 1, "total_rows": 7 }
+    },
+    {
+      "table": "customers",
+      "column": "email",
+      "dimension": "uniqueness",
+      "min_severity": "medium",
+      "evidence_expect": { "duplicate_key_count": 1 }
+    }
+  ],
+  "pii_columns_detected": [
+    { "table": "customers", "column": "email", "category": "email" }
+  ],
+  "known_pii_values": [
+    "alice@example.test", "bob@example.test", "carol@example.test",
+    "dave@example.test", "erin@example.test", "frank@example.test"
+  ]
+}

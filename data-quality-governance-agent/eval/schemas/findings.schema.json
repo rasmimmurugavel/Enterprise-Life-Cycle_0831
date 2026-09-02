@@ -1,0 +1,82 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://internal/data-quality-governance-agent/findings.schema.json",
+  "title": "Data Quality & Governance Agent - audit findings",
+  "description": "Shape every agent audit run (app/agent.py) must produce. Enforced by app/agent.py::validate_findings before a result is handed to the Streamlit UI or scored by eval/eval_runner.py - an agent response that doesn't validate is a failed run, not a degraded one (HLD §6, fail closed).",
+  "type": "object",
+  "required": ["run_id", "scope", "tables_audited", "tables_not_audited", "scorecard", "findings", "governance_summary"],
+  "additionalProperties": true,
+  "properties": {
+    "run_id": { "type": "string", "minLength": 1 },
+    "scope": {
+      "type": "object",
+      "properties": {
+        "schemas": { "type": "array", "items": { "type": "string" } },
+        "tables": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "tables_audited": { "type": "array", "items": { "type": "string" } },
+    "tables_not_audited": { "type": "array", "items": { "type": "string" } },
+    "scorecard": {
+      "type": "object",
+      "required": ["database_score", "tables"],
+      "properties": {
+        "database_score": { "type": "number", "minimum": 0, "maximum": 100 },
+        "tables": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["completeness", "validity", "uniqueness", "consistency", "timeliness", "composite"],
+            "properties": {
+              "completeness": { "type": "number", "minimum": 0, "maximum": 100 },
+              "validity": { "type": "number", "minimum": 0, "maximum": 100 },
+              "uniqueness": { "type": "number", "minimum": 0, "maximum": 100 },
+              "consistency": { "type": "number", "minimum": 0, "maximum": 100 },
+              "timeliness": { "type": "number", "minimum": 0, "maximum": 100 },
+              "composite": { "type": "number", "minimum": 0, "maximum": 100 }
+            }
+          }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["table", "dimension", "severity", "description"],
+        "properties": {
+          "table": { "type": "string", "minLength": 1 },
+          "column": { "type": ["string", "null"] },
+          "dimension": {
+            "type": "string",
+            "enum": ["completeness", "validity", "uniqueness", "consistency", "timeliness"]
+          },
+          "severity": {
+            "type": "string",
+            "enum": ["critical", "high", "medium", "low"]
+          },
+          "description": { "type": "string", "minLength": 1 },
+          "evidence": { "type": "object" }
+        }
+      }
+    },
+    "governance_summary": {
+      "type": "object",
+      "properties": {
+        "pii_columns_detected": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "required": ["table", "column", "category"],
+            "properties": {
+              "table": { "type": "string" },
+              "column": { "type": "string" },
+              "category": { "type": "string" }
+            }
+          }
+        },
+        "overrides_applied": { "type": "array" }
+      }
+    }
+  }
+}

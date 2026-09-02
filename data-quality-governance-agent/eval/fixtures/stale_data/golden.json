@@ -1,0 +1,17 @@
+{
+  "fixture": "stale_data",
+  "seed_file": "db/seed/stale_data.sql",
+  "schema": "eval_stale_data",
+  "description": "sync_status.last_synced_at is ~400 days old for every row - a stalled pipeline.",
+  "findings": [
+    {
+      "table": "sync_status",
+      "column": "last_synced_at",
+      "dimension": "timeliness",
+      "min_severity": "medium",
+      "evidence_expect": {}
+    }
+  ],
+  "pii_columns_detected": [],
+  "known_pii_values": []
+}

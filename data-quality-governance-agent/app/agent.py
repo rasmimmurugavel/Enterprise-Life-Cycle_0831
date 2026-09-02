@@ -20,18 +20,45 @@ import uuid
 from collections.abc import AsyncIterator, Callable
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
+from pathlib import Path
 from typing import Any
 
 import anthropic
+import jsonschema
 from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 from app.config import settings
 from app.prompts import SCHEMA_INSPECTION_SYSTEM_PROMPT, SYSTEM_PROMPT
 
+_FINDINGS_SCHEMA_PATH = Path(__file__).resolve().parent.parent / "eval" / "schemas" / "findings.schema.json"
+_findings_schema_cache: dict[str, Any] | None = None
+
 
 class AgentRunError(Exception):
     """Raised when a run cannot produce a valid, schema-conforming result."""
+
+
+def _load_findings_schema() -> dict[str, Any]:
+    global _findings_schema_cache
+    if _findings_schema_cache is None:
+        with open(_FINDINGS_SCHEMA_PATH, encoding="utf-8") as fh:
+            _findings_schema_cache = json.load(fh)
+    return _findings_schema_cache
+
+
+def validate_findings(findings: dict[str, Any]) -> None:
+    """HLD §2.2 / §6: fail closed. A findings payload that doesn't match
+    eval/schemas/findings.schema.json is never handed to the UI or the
+    eval scorer as if it were trustworthy - the run is a failure."""
+    schema = _load_findings_schema()
+    try:
+        jsonschema.validate(instance=findings, schema=schema)
+    except jsonschema.ValidationError as exc:
+        raise AgentRunError(
+            f"Agent's final answer did not match the findings schema: {exc.message} "
+            f"(path: {'/'.join(str(p) for p in exc.absolute_path) or '(root)'})"
+        ) from exc
 
 
 @dataclass
@@ -126,6 +153,7 @@ async def _run_react_loop(
     user_prompt: str,
     max_tool_calls: int,
     on_progress: ProgressCallback | None = None,
+    validator: Callable[[dict[str, Any]], None] | None = None,
 ) -> tuple[dict[str, Any], list[ToolCallEvent], str]:
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
@@ -151,7 +179,10 @@ async def _run_react_loop(
             final_text = "".join(
                 block.text for block in response.content if getattr(block, "type", None) == "text"
             )
-            return _extract_json_object(final_text), tool_call_events, stopped_reason
+            parsed = _extract_json_object(final_text)
+            if validator:
+                validator(parsed)
+            return parsed, tool_call_events, stopped_reason
 
         if calls_made >= max_tool_calls:
             # Force a final answer instead of silently truncating mid-loop.
@@ -176,7 +207,10 @@ async def _run_react_loop(
             final_text = "".join(
                 block.text for block in final_response.content if getattr(block, "type", None) == "text"
             )
-            return _extract_json_object(final_text), tool_call_events, stopped_reason
+            parsed = _extract_json_object(final_text)
+            if validator:
+                validator(parsed)
+            return parsed, tool_call_events, stopped_reason
 
         tool_results: list[dict[str, Any]] = []
         for block in response.content:
@@ -217,6 +251,14 @@ async def run_audit_async(
         raise AgentRunError("ANTHROPIC_API_KEY is not set - see .env.example.")
 
     run_id = str(uuid.uuid4())
+
+    def _validate(parsed: dict[str, Any]) -> None:
+        # The agent is instructed to echo run_id back; backfill it before
+        # validating so a model that drops it doesn't fail the run over
+        # metadata we already know authoritatively on our side.
+        parsed.setdefault("run_id", run_id)
+        validate_findings(parsed)
+
     async with _mcp_session() as session:
         findings, tool_calls, stopped_reason = await _run_react_loop(
             session,
@@ -224,6 +266,7 @@ async def run_audit_async(
             user_prompt=f"{scope_description}\n\n(run_id for this audit: {run_id})",
             max_tool_calls=max_tool_calls or settings.max_tool_calls,
             on_progress=on_progress,
+            validator=_validate,
         )
     findings.setdefault("run_id", run_id)
     return AuditRunResult(run_id=run_id, findings=findings, tool_calls=tool_calls, stopped_reason=stopped_reason)

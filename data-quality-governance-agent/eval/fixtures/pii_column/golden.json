@@ -1,0 +1,16 @@
+{
+  "fixture": "pii_column",
+  "seed_file": "db/seed/pii_column.sql",
+  "schema": "eval_pii_column",
+  "description": "support_tickets.customer_email is name+pattern PII (email); support_tickets.notes is pattern-only PII (phone numbers and one embedded email) with no name hint - tests that detect_pii doesn't rely solely on column naming.",
+  "findings": [],
+  "pii_columns_detected": [
+    { "table": "support_tickets", "column": "customer_email", "category": "email" },
+    { "table": "support_tickets", "column": "notes", "category_any_of": ["phone", "email"] }
+  ],
+  "known_pii_values": [
+    "grace.green@example.test", "heidi.hill@example.test", "ivan.ivanov@example.test",
+    "judy.jones@example.test", "kevin.klein@example.test", "laura.lee@example.test",
+    "555-010-1111", "555-010-2222", "555-010-3333"
+  ]
+}
