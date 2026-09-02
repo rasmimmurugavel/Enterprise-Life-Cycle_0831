@@ -1,5 +1,7 @@
 # Core agent + UI
-streamlit>=1.38.0
+# >=1.50 for st.plotly_chart/st.dataframe's `width="stretch"` param
+# (use_container_width is deprecated as of this pin).
+streamlit>=1.50.0
 anthropic>=0.34.0
 # Pinned to the 1.x line deliberately: mcp 2.0 (released very recently)
 # renamed FastMCP -> MCPServer and changed server-side internals. The
