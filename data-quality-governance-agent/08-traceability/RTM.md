@@ -16,19 +16,26 @@ its current execution status - see `rtm.csv` for the full table.
 
 This project has two test tracks (`04-test-strategy/Test-Strategy.md`
 §1): **deterministic** (unit/integration, no LLM judgment) and
-**eval** (real model calls against fixtures, scored). The build
-environment for this initial pass had neither a live Postgres instance
-nor an `ANTHROPIC_API_KEY` configured, so:
+**eval** (real model calls against fixtures, scored). A live Postgres
+instance became available partway through this build and was used to
+run real integration tests (`tests/test_live_integration.py`) - which
+is how DEF-003 and DEF-004 were found - but no `ANTHROPIC_API_KEY` was
+ever available, so:
 
 - Every deterministic-track claim in `rtm.csv` marked "Executed" was
-  actually run during the build - as standalone verification scripts
-  against the real code (not asserted from reading the code) - see
+  actually run during the build - either as pure unit tests, or (where
+  noted "+ live Postgres integration") against a real, disposable
+  Postgres instance under the actual least-privilege `dq_audit_reader`
+  role - not asserted from reading the code. See
   `09-test-execution/Execution-Summary.md` for exactly what ran and
-  what it showed.
-- Every eval-track claim (BR-03, BR-04's judgment component, BR-08) is
-  marked **blocked**, not "passed" - the eval framework and its
-  fixtures are built and the scoring logic is unit-tested against
-  synthetic inputs, but a real audit run against a real database
+  what it showed, including two real defects (DEF-003, DEF-004) that
+  only surfaced once real Postgres queries actually ran under that
+  role.
+- Every eval-track claim (BR-03/BR-04's *agent judgment* component,
+  BR-08's live-model run) is still marked **blocked**, not "passed" -
+  the eval framework, its fixtures, and the tool-level results they
+  depend on are now verified correct against live data, but a real
+  audit run against a real database
   scored by a real model call has not yet happened. This is flagged
   explicitly rather than glossed over, per this project's own
   principle (BR-05/BR-06: findings must be reproducible, not asserted).

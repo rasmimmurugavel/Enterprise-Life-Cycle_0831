@@ -14,20 +14,29 @@ from typing import Any
 from mcp_server.tools.db import quote_ident
 from mcp_server.tools.governance import governed_select, require_schema_allowed
 
+# pg_catalog, not information_schema.table_constraints/key_column_usage/
+# constraint_column_usage - see the long comment in schema_tools.py's
+# _INSPECT_SCHEMA_SQL (DEF-003): those information_schema views only
+# show constraints on tables the querying role owns, which silently
+# breaks referential-integrity auditing for exactly the least-privilege
+# read-only role this app is designed to use.
 _FK_LIST_SQL = """
     select
-        tc.table_name,
-        kcu.column_name,
-        ccu.table_schema as ref_schema,
-        ccu.table_name as ref_table,
-        ccu.column_name as ref_column
-    from information_schema.table_constraints tc
-    join information_schema.key_column_usage kcu
-        on tc.constraint_name = kcu.constraint_name and tc.table_schema = kcu.table_schema
-    join information_schema.constraint_column_usage ccu
-        on tc.constraint_name = ccu.constraint_name and tc.table_schema = ccu.table_schema
-    where tc.constraint_type = 'FOREIGN KEY' and tc.table_schema = %(schema)s
-      and (%(table)s is null or tc.table_name = %(table)s)
+        c.relname as table_name,
+        a.attname as column_name,
+        fn.nspname as ref_schema,
+        fc.relname as ref_table,
+        fa.attname as ref_column
+    from pg_constraint con
+    join pg_class c on c.oid = con.conrelid
+    join pg_namespace n on n.oid = con.connamespace
+    join pg_class fc on fc.oid = con.confrelid
+    join pg_namespace fn on fn.oid = fc.relnamespace
+    join unnest(con.conkey, con.confkey) as k(attnum, fattnum) on true
+    join pg_attribute a on a.attrelid = c.oid and a.attnum = k.attnum
+    join pg_attribute fa on fa.attrelid = fc.oid and fa.attnum = k.fattnum
+    where con.contype = 'f' and n.nspname = %(schema)s
+      and (%(table)s::text is null or c.relname = %(table)s::text)
 """
 
 

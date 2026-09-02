@@ -54,11 +54,29 @@ broader privileges than intended.
 
 ## Local dev database
 
-For local development and running the eval fixtures without touching a
-real database, see `docker-compose.yml` at the repo root and
-`db/seed/`, which seeds a disposable Postgres instance with tables
-representing each defect class the rubric scores (nulls, duplicates,
-orphaned FKs, a PII-shaped column, stale data).
+```bash
+docker compose up -d          # Postgres 16, seeded automatically on first start
+cp .env.example .env          # then set PGUSER=dq_audit_reader, PGPASSWORD=devpassword,
+                               # PGDATABASE=dq_dev - matching what db/seed/00_provision_role.sql created
+pytest tests/                 # unit tests + live integration tests (auto-detected via PGHOST)
+```
+
+`docker-compose.yml` mounts `db/seed/` into
+`/docker-entrypoint-initdb.d/`, so Postgres runs every `.sql` file
+there once, alphabetically, on first container start:
+`00_provision_role.sql` creates the exact `dq_audit_reader` role
+described above (password `devpassword`, dev-only - never reuse it
+anywhere real), then each fixture script creates its own schema,
+grants that role `USAGE` on it, and seeds data representing one defect
+class the rubric scores (nulls, duplicates, orphaned FKs, a
+PII-shaped column, stale data). This is also exactly what
+`tests/test_live_integration.py` and `eval/eval_runner.py` expect to
+find.
+
+No Docker available? `docker-compose.yml` is just a thin wrapper
+around a stock `postgres:16-alpine` plus that init-script convention -
+any local Postgres 16+ works identically: create a `dq_dev` database
+and run the same files in `db/seed/` against it in order with `psql`.
 
 ## Eval seeding role vs. the audit role
 

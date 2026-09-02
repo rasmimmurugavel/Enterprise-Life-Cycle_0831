@@ -3,6 +3,7 @@
 -- is uniformly far in the past, indicating a stalled sync pipeline.
 drop schema if exists eval_stale_data cascade;
 create schema eval_stale_data;
+grant usage on schema eval_stale_data to dq_audit_reader;
 
 create table eval_stale_data.sync_status (
     id serial primary key,

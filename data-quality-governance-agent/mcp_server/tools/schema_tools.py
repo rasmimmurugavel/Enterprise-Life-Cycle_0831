@@ -14,6 +14,19 @@ _LIST_SCHEMAS_SQL = """
 
 # One batched query per introspection call (FR-111) - never one round
 # trip per table.
+#
+# PK/FK detection deliberately reads pg_catalog (pg_constraint/
+# pg_attribute), NOT information_schema.table_constraints/
+# key_column_usage/constraint_column_usage (DEF-003): those
+# information_schema views are SQL-standard "administrative" views
+# that Postgres only populates for constraints on tables the querying
+# role OWNS - they silently return zero rows for a plain SELECT-only
+# role auditing tables it doesn't own, which is this app's entire
+# operating model (BR-01). information_schema.columns has no such
+# restriction (it checks column-level privilege, not ownership), so
+# it's kept for the column list. Verified live against a real
+# dq_audit_reader role with no ownership - see
+# 09-test-execution/Execution-Summary.md.
 _INSPECT_SCHEMA_SQL = """
     with cols as (
         select
@@ -29,29 +42,33 @@ _INSPECT_SCHEMA_SQL = """
     ),
     pks as (
         select
-            tc.table_schema,
-            tc.table_name,
-            kcu.column_name
-        from information_schema.table_constraints tc
-        join information_schema.key_column_usage kcu
-            on tc.constraint_name = kcu.constraint_name
-            and tc.table_schema = kcu.table_schema
-        where tc.constraint_type = 'PRIMARY KEY' and tc.table_schema = %(schema)s
+            n.nspname as table_schema,
+            c.relname as table_name,
+            a.attname as column_name
+        from pg_constraint con
+        join pg_class c on c.oid = con.conrelid
+        join pg_namespace n on n.oid = con.connamespace
+        join unnest(con.conkey) as k(attnum) on true
+        join pg_attribute a on a.attrelid = c.oid and a.attnum = k.attnum
+        where con.contype = 'p' and n.nspname = %(schema)s
     ),
     fks as (
         select
-            tc.table_schema as table_schema,
-            tc.table_name as table_name,
-            kcu.column_name as column_name,
-            ccu.table_schema as ref_schema,
-            ccu.table_name as ref_table,
-            ccu.column_name as ref_column
-        from information_schema.table_constraints tc
-        join information_schema.key_column_usage kcu
-            on tc.constraint_name = kcu.constraint_name and tc.table_schema = kcu.table_schema
-        join information_schema.constraint_column_usage ccu
-            on tc.constraint_name = ccu.constraint_name and tc.table_schema = ccu.table_schema
-        where tc.constraint_type = 'FOREIGN KEY' and tc.table_schema = %(schema)s
+            n.nspname as table_schema,
+            c.relname as table_name,
+            a.attname as column_name,
+            fn.nspname as ref_schema,
+            fc.relname as ref_table,
+            fa.attname as ref_column
+        from pg_constraint con
+        join pg_class c on c.oid = con.conrelid
+        join pg_namespace n on n.oid = con.connamespace
+        join pg_class fc on fc.oid = con.confrelid
+        join pg_namespace fn on fn.oid = fc.relnamespace
+        join unnest(con.conkey, con.confkey) as k(attnum, fattnum) on true
+        join pg_attribute a on a.attrelid = c.oid and a.attnum = k.attnum
+        join pg_attribute fa on fa.attrelid = fc.oid and fa.attnum = k.fattnum
+        where con.contype = 'f' and n.nspname = %(schema)s
     )
     select
         cols.table_name,

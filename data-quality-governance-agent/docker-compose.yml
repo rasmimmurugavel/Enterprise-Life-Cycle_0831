@@ -1,0 +1,25 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: dq_governance_dev_postgres
+    environment:
+      POSTGRES_DB: dq_dev
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - dq_dev_pgdata:/var/lib/postgresql/data
+      # Runs once, alphabetically, on first container start only (Postgres
+      # image convention) - seeds every eval fixture schema so a fresh
+      # `docker compose up` is immediately usable both for manual UI
+      # testing and for `python -m eval.eval_runner`.
+      - ./db/seed:/docker-entrypoint-initdb.d:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d dq_dev"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  dq_dev_pgdata:

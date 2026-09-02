@@ -57,10 +57,30 @@ a new source of truth.
 Read `09-test-execution/Execution-Summary.md` and
 `10-defects/Defect-Log.md` before treating this system as
 production-ready. In short: the governance/plumbing layer (sections
-1-3 above) has been directly verified against real code; the
-judgment layer (section 4) has a built and unit-tested framework but
-has not yet been run end-to-end against a live model and database in
-this pass, and UAT (section 5) has not yet started. A critical
-SQL-identifier-injection defect (DEF-001) was found and fixed during
-this build - it is the concrete example of why this system treats
-"looks read-only" and "is provably read-only" as different claims.
+1-3 above) has been directly verified against real code AND against a
+real, disposable Postgres instance under the actual least-privilege
+audit role (`tests/test_live_integration.py`); the judgment layer
+(section 4) has a built and unit-tested framework, with its
+underlying tool-level results now confirmed correct against live
+data, but has not yet been run end-to-end against a live model in
+this pass, and UAT (section 5) has not yet started.
+
+Three defects were found and fixed during this build, all through
+actually running the system rather than reading the code:
+
+- **DEF-001** (critical): a SQL-identifier-injection path - the
+  concrete example of why this system treats "looks read-only" and
+  "is provably read-only" as different claims.
+- **DEF-003** (critical): PK/FK detection silently returned nothing
+  under the real least-privilege role, because the `information_schema`
+  views used only expose constraints to a table's *owner* - invisible
+  in any test that wasn't run as that exact role. This is the concrete
+  example of why "passed my tests" and "passed under the actual
+  production permission model" are different claims too.
+- **DEF-004** (high): an ambiguous-type query parameter that only
+  raised once a real Postgres connection executed it with a `NULL`
+  argument.
+
+All three are fixed, verified, and now covered by regression tests
+that run automatically whenever a live database is configured
+(`tests/test_live_integration.py`).

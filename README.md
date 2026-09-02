@@ -1,14 +1,20 @@
-# Enterprise SDLC Framework — Worked Example: Loan Evaluator
+# Enterprise SDLC Framework — Worked Examples
 
-This repository is a complete, traceable SDLC/STLC artifact set built
-end-to-end for a realistic system — a **Loan Evaluator**: an automated
-underwriting pre-screening engine that scores DTI, LTV, credit tier, and
-employment history and returns an explainable risk recommendation.
+This repository holds two complete, traceable SDLC/STLC artifact sets,
+each built end-to-end for a realistic system:
 
-It's meant as a **template you can copy for your next project** — the
-structure, ID scheme, and traceability discipline are the reusable part;
-the loan-specific business rules are the worked example that makes every
-document concrete instead of generic.
+| Project | What it is |
+|---|---|
+| [`loan-evaluator/`](loan-evaluator/) | An automated underwriting pre-screening engine that scores DTI, LTV, credit tier, and employment history and returns an explainable risk recommendation. |
+| [`data-quality-governance-agent/`](data-quality-governance-agent/) | An autonomous AI agent (Streamlit + Claude + MCP) that audits PostgreSQL databases for data quality defects and governance risk — read-only by construction, PII-masked before anything reaches the model, every action logged, judgment scored against versioned eval rubrics before release. |
+
+Both are meant as a **template you can copy for your next project** —
+the structure, ID scheme, and traceability discipline are the reusable
+part; the business rules of each worked example are what make every
+document concrete instead of generic. The section below describes
+`loan-evaluator/`'s layout in detail; `data-quality-governance-agent/`
+follows the same 01–11 discipline plus its own `README.md`,
+`AUDIT-READINESS.md`, and eval framework — start there for that project.
 
 ## How to read this repo
 

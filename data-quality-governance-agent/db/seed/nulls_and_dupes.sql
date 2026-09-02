@@ -3,6 +3,7 @@
 -- (an "email should be unique" column that in fact has duplicates).
 drop schema if exists eval_nulls_and_dupes cascade;
 create schema eval_nulls_and_dupes;
+grant usage on schema eval_nulls_and_dupes to dq_audit_reader;
 
 create table eval_nulls_and_dupes.customers (
     id serial primary key,

@@ -140,13 +140,62 @@ changed server internals) very recently. Discovered when a fresh
 import. Pinned `mcp>=1.2.0,<2.0.0` in `requirements.txt` and
 re-verified §2.6/2.7 against the pinned version.
 
+### 2.11 Live Postgres integration run - the most consequential verification in this pass
+
+A real Postgres 16 instance became available partway through this
+build (started locally; `docker-compose.yml` targets the same setup).
+Provisioned the exact `dq_audit_reader` role from `db/README.md`
+(`SELECT`-only, owns nothing), ran all `db/seed/*.sql` fixtures against
+it as an admin connection, then ran the real MCP tools - not mocked,
+not read-only-superuser, the actual intended least-privilege role -
+against live data:
+
+- **`inspect_schema` / `check_referential_integrity` found nothing.**
+  Every PK and FK came back empty for every fixture table. Root cause:
+  `information_schema.table_constraints`/`key_column_usage`/
+  `constraint_column_usage` only return rows for constraints on tables
+  the *querying role owns* - confirmed by running the identical SQL as
+  both `postgres` (superuser, returned rows) and `dq_audit_reader`
+  (zero rows) side by side. This had been invisible until this exact
+  moment: every prior check of this logic was either a pure-Python
+  unit test (no database at all) or would have been run, if at all,
+  as an owning/superuser connection. Filed and fixed as **DEF-003**
+  (critical) - rewrote both queries against `pg_catalog`
+  (`pg_constraint`/`pg_class`/`pg_namespace`/`pg_attribute`), which
+  Postgres exposes to any role regardless of ownership; re-verified
+  `is_primary_key: true` on `customers.id` and the FK on
+  `orders.customer_id` both correctly detected afterward.
+- **`check_referential_integrity()` with no `table` filter raised
+  `psycopg.errors.AmbiguousParameter`.** The same parameter used in
+  both `IS NULL` and an equality comparison has no inferable type when
+  the passed value is `None`. Filed and fixed as **DEF-004** (high) -
+  explicit `::text` casts on both occurrences.
+- After both fixes, re-ran every tool against every fixture and got
+  exact matches to each fixture's `golden.json`: `orphan_count: 1` on
+  `orders.customer_id`, `null_rows: 2/1/0` on
+  `full_name`/`signup_date`/`email`, `duplicate_key_count: 1` on
+  `email`, PII correctly classified on both `customer_email` (name
+  hint, category `email`) and `notes` (value-pattern-only, category
+  `phone`) with zero raw values appearing anywhere in
+  `run_readonly_query`'s masked output, and the schema allowlist
+  correctly rejecting an out-of-scope schema.
+- These checks are now permanent, not just ad hoc: see
+  `tests/test_live_integration.py`, auto-skipped when no
+  `DATABASE_URL`/`PGHOST` is configured, so a plain `pytest tests/`
+  stays fast while `docker compose up -d && pytest tests/` (or CI with
+  a Postgres service container) exercises them for real.
+
 ## 3. What was NOT executed (blocked on environment, not skipped)
+
+Live Postgres integration (§2.11) is no longer blocked - it was
+executed, found two real defects, and both are fixed and
+regression-tested. What remains blocked is specifically the
+Anthropic-API-dependent half:
 
 | Not executed | Blocked on | Tracked as |
 |---|---|---|
-| Any test requiring a live Postgres connection (schema inspection, profiling, referential integrity, duplicate checks, row caps, statement timeout against a real query) - TC-010 through TC-030, TC-040-048 as full end-to-end runs | No Postgres instance available in the build sandbox | `08-traceability/RTM.md` "blocked" rows; `docker-compose.yml` (added next) removes this blocker for local dev |
-| Any test requiring a real Anthropic API call (a full agent audit run producing real findings, TC-045-048, TC-081, TC-085-087) | No `ANTHROPIC_API_KEY` configured/available in the build sandbox | Same |
-| `eval/eval_runner.py`'s actual end-to-end run against the four fixtures | Requires both of the above | `12-eval-rubrics/Eval-Rubric-Spec.md` §6 gives the exact commands to run it once credentials are available |
+| Any test requiring a real Anthropic API call (a full agent audit run producing real findings via the ReAct loop, TC-045-048, TC-081, TC-085-087) | No `ANTHROPIC_API_KEY` configured/available in the build sandbox | `08-traceability/rtm.csv` BR-03/BR-04 rows |
+| `eval/eval_runner.py`'s actual end-to-end run against the four fixtures (the tool-level results it would score are now verified correct per §2.11 - what's untested is the agent's own judgment: does it choose to call the right tools and report findings at the right severity) | Same | `12-eval-rubrics/Eval-Rubric-Spec.md` §6 gives the exact commands to run it once credentials are available |
 | UAT (`11-uat-and-signoff/`) | Requires a completed real audit run for a human reviewer to assess | Not started this pass |
 | FR-132 (governance override persistence) | Not implemented this pass | DEF-002, `10-defects/Defect-Log.md` |
 

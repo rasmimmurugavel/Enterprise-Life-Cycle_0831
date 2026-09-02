@@ -5,6 +5,7 @@
 -- (.test TLD, obviously fake phone numbers) - never real PII.
 drop schema if exists eval_pii_column cascade;
 create schema eval_pii_column;
+grant usage on schema eval_pii_column to dq_audit_reader;
 
 create table eval_pii_column.support_tickets (
     id serial primary key,

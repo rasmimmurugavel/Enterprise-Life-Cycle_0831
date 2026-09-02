@@ -5,6 +5,7 @@
 -- existed, which Postgres permits without revalidating history).
 drop schema if exists eval_orphaned_fk cascade;
 create schema eval_orphaned_fk;
+grant usage on schema eval_orphaned_fk to dq_audit_reader;
 
 create table eval_orphaned_fk.customers (
     id serial primary key,
