@@ -6,6 +6,7 @@ mcp>=1.2.0
 # Postgres
 psycopg[binary]>=3.2.0
 sqlalchemy>=2.0.0
+sqlglot>=25.0.0
 
 # Data profiling / quality
 pandas>=2.2.0
