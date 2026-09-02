@@ -26,6 +26,34 @@ class NotReadOnlyError(Exception):
     """Raised when the agent-composed SQL is not a single read-only SELECT."""
 
 
+def quote_ident(name: str) -> str:
+    """Safely quote a single Postgres identifier (schema/table/column
+    name) for interpolation into SQL text.
+
+    Every tool that builds SQL from an agent-supplied identifier
+    (profiling_tools.py, integrity_tools.py, pii_tools.py) MUST go
+    through this - a bare f'"{name}"' is not safe. Those names
+    ultimately come from real database metadata, but they arrive at
+    the query-building call sites as plain tool-call arguments the
+    agent supplies, indistinguishable at that point from anything
+    else the model might produce; a column legitimately named
+    something like `x" or pg_sleep(999) --` (unusual, but a valid
+    Postgres identifier if quoted at creation) would, under naive
+    f'"{name}"' interpolation, close the identifier early and splice
+    an arbitrary boolean expression into the query - a single SELECT
+    statement, so it would NOT be caught by assert_select_only's
+    statement-type/forbidden-node AST check, which guards against
+    non-SELECT statements, not against identifier injection within an
+    otherwise-valid SELECT.
+
+    The standard SQL fix is doubling any embedded double-quote so it
+    is treated as a literal character of the identifier rather than a
+    terminator - this makes it impossible to break out of the quoted
+    identifier regardless of content.
+    """
+    return '"' + name.replace('"', '""') + '"'
+
+
 class QueryResult(Protocol):
     columns: list[str]
     rows: list[dict[str, Any]]

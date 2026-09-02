@@ -13,7 +13,7 @@ from typing import Any
 
 from mcp_server.config import settings
 from mcp_server.tools.audit_log import timed_tool_call
-from mcp_server.tools.db import DBAdapter
+from mcp_server.tools.db import DBAdapter, quote_ident
 from mcp_server.tools.governance import require_schema_allowed
 from mcp_server.tools.pii import classify_columns, column_name_hint, scan_values
 
@@ -30,8 +30,8 @@ def detect_pii(schema: str, table: str, columns: list[str] | None = None,
         columns: Columns to check; defaults to all columns in the sample.
     """
     require_schema_allowed(schema)
-    qualified = f'"{schema}"."{table}"'
-    col_clause = ", ".join(f'"{c}"' for c in columns) if columns else "*"
+    qualified = f"{quote_ident(schema)}.{quote_ident(table)}"
+    col_clause = ", ".join(quote_ident(c) for c in columns) if columns else "*"
     sql = f"select {col_clause} from {qualified} limit %(n)s"
 
     args_for_log = {"schema": schema, "table": table, "columns": columns}

@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from mcp_server.tools.db import quote_ident
 from mcp_server.tools.governance import governed_select, require_schema_allowed
 
 _FK_LIST_SQL = """
@@ -46,10 +47,10 @@ def check_referential_integrity(schema: str, table: str | None = None, run_id: s
 
     findings: list[dict[str, Any]] = []
     for fk in fk_result.rows:
-        child = f'"{schema}"."{fk["table_name"]}"'
-        parent = f'"{fk["ref_schema"]}"."{fk["ref_table"]}"'
-        child_col = f'"{fk["column_name"]}"'
-        parent_col = f'"{fk["ref_column"]}"'
+        child = f"{quote_ident(schema)}.{quote_ident(fk['table_name'])}"
+        parent = f"{quote_ident(fk['ref_schema'])}.{quote_ident(fk['ref_table'])}"
+        child_col = quote_ident(fk["column_name"])
+        parent_col = quote_ident(fk["ref_column"])
         sql = f"""
             select count(*) as orphan_count
             from {child} c
@@ -85,8 +86,8 @@ def check_duplicates(schema: str, table: str, columns: list[str], run_id: str | 
     constraint) actually holds unique values - a duplicate here means
     either a broken constraint or a load that bypassed it."""
     require_schema_allowed(schema)
-    qualified = f'"{schema}"."{table}"'
-    col_list = ", ".join(f'"{c}"' for c in columns)
+    qualified = f"{quote_ident(schema)}.{quote_ident(table)}"
+    col_list = ", ".join(quote_ident(c) for c in columns)
     sql = f"""
         select count(*) as duplicate_key_count
         from (

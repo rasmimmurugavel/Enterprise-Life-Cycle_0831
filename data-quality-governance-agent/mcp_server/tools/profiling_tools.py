@@ -11,6 +11,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from mcp_server.tools.db import quote_ident
 from mcp_server.tools.governance import governed_select, require_schema_allowed
 
 
@@ -23,11 +24,11 @@ def profile_table(schema: str, table: str, columns: list[str], run_id: str | Non
         columns: Column names to profile (from a prior inspect_schema call).
     """
     require_schema_allowed(schema)
-    qualified = f'"{schema}"."{table}"'
+    qualified = f"{quote_ident(schema)}.{quote_ident(table)}"
 
     profiles: list[dict[str, Any]] = []
     for column in columns:
-        col_ident = f'"{column}"'
+        col_ident = quote_ident(column)
         sql = f"""
             select
                 count(*) as total_rows,
@@ -70,8 +71,8 @@ def top_values(schema: str, table: str, column: str, limit: int = 10, run_id: st
     'status' column with a typo'd duplicate value). Values themselves
     are subject to PII masking like any other tool output."""
     require_schema_allowed(schema)
-    qualified = f'"{schema}"."{table}"'
-    col_ident = f'"{column}"'
+    qualified = f"{quote_ident(schema)}.{quote_ident(table)}"
+    col_ident = quote_ident(column)
     sql = f"""
         select {col_ident} as value, count(*) as frequency
         from {qualified}
