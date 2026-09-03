@@ -7,7 +7,24 @@
 -- This is a LOCAL DEV CONVENIENCE ONLY - a real environment provisions
 -- this role by hand (or via infra-as-code) against its own database,
 -- following db/README.md, with a secret from its own secrets manager.
-create role dq_audit_reader with login password 'devpassword';
+--
+-- Idempotent on purpose, unlike a plain `create role`: re-running this
+-- script (e.g. after a partial earlier attempt, or re-seeding by hand
+-- outside docker-compose's one-shot init) must always converge to the
+-- same known password rather than silently erroring on "role already
+-- exists" and leaving a stale password in place - psql continues past
+-- errors in a script by default, so that failure mode is easy to miss
+-- until `dq_audit_reader`/`devpassword` mysteriously stops working.
+do
+$$
+begin
+    if not exists (select from pg_roles where rolname = 'dq_audit_reader') then
+        create role dq_audit_reader with login password 'devpassword';
+    else
+        alter role dq_audit_reader with password 'devpassword';
+    end if;
+end
+$$;
 
 grant connect on database dq_dev to dq_audit_reader;
 
